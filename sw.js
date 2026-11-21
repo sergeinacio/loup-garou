@@ -1,5 +1,5 @@
 // Keeps the app working offline. Bump VERSION after changing files.
-const VERSION = "lgn-v2";
+const VERSION = "lgn-v3";
 const FILES = ["./", "./index.html", "./manifest.webmanifest", "./icon-180.png", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", e => {

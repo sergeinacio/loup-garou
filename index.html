@@ -386,6 +386,27 @@ function renderSettings(){
   box.append(el("div",{class:"row"}, el("label",{},"iPhone voice for missing lines", el("small",{},"Reads lines you haven't recorded")), sw));
 }
 
+
+function showSheet(title, ...body){
+  const sh=$("#sheet"); sh.innerHTML="";
+  sh.append(el("h2",{style:"margin-top:0"},title), ...body, el("button",{class:"big",onclick:()=>$("#modal").classList.remove("on")},"OK"));
+  $("#modal").classList.add("on");
+}
+function micError(e){
+  const name = (e && e.name) || "Error";
+  if (EMBED) return showSheet("Microphone blocked here", el("p",{},"This test version runs inside Claude, which blocks the microphone. Open the app from sergeinacio.github.io/loup-garou in Safari."));
+  if (name==="NotReadableError" || name==="AbortError")
+    return showSheet("Microphone is busy", el("p",{},"Another app is using the microphone (a call, a voice memo, a video…). Close it and try again."));
+  if (name==="NotFoundError")
+    return showSheet("No microphone found", el("p",{},"This device doesn't seem to have a microphone available."));
+  showSheet("Microphone not allowed",
+    el("p",{},"Check these, in order:"),
+    el("p",{},el("b",{},"1. Open it in Safari itself. "),"If you tapped the link inside another app (Claude, GitHub, WhatsApp…), that app's built-in browser can block the microphone. Copy the link and paste it in Safari, or use the icon on your home screen."),
+    el("p",{},el("b",{},"2. Allow it for this website. "),"In Safari, tap ",el("b",{},"aA")," (or the page icon) in the address bar › ",el("b",{},"Website Settings")," › ",el("b",{},"Microphone")," › ",el("b",{},"Allow"),". Then reload the page."),
+    el("p",{},el("b",{},"3. Check Settings. "),"iPhone Settings › Apps › Safari › Microphone › ",el("b",{},"Ask")," or ",el("b",{},"Allow"),"."),
+    el("p",{style:"font-size:12px;opacity:.7"},"Error: "+name));
+}
+$("#modal").addEventListener("click", e=>{ if (e.target.id==="modal") $("#modal").classList.remove("on"); });
 /* ---------------- Voices view ---------------- */
 let Rec = null; // {key, mr, chunks, stream, t0, timer}
 let pickKey = null;
@@ -436,7 +457,7 @@ async function startRec(key){
   if (!navigator.mediaDevices || !window.MediaRecorder || (EMBED && !navigator.mediaDevices.getUserMedia)){ toast("Recording isn't available here. Open the app from your home screen."); return; }
   let stream;
   try{ stream = await navigator.mediaDevices.getUserMedia({ audio:{ echoCancellation:true, noiseSuppression:true } }); }
-  catch(e){ toast(EMBED ? "The microphone is blocked in this test version. Use Import with a Voice Memo instead." : "Microphone access was refused. Allow it in Settings › Safari › Microphone."); return; }
+  catch(e){ micError(e); return; }
   const mime = pickMime(); let mr;
   try{ mr = mime ? new MediaRecorder(stream,{mimeType:mime}) : new MediaRecorder(stream); }catch(e){ mr = new MediaRecorder(stream); }
   Rec = { key, mr, chunks:[], stream, t0:Date.now() };
@@ -725,7 +746,7 @@ async function recMusic(i){
   Music.stopNow(); musicPreview=false;
   let stream;
   try{ stream = await navigator.mediaDevices.getUserMedia({ audio:{ echoCancellation:false, noiseSuppression:false, autoGainControl:false } }); }
-  catch(e){ toast(EMBED ? "The microphone is blocked in this test version." : "Microphone access was refused. Allow it in Settings › Safari › Microphone."); return; }
+  catch(e){ micError(e); return; }
   const base = i>0 ? await Music.buf(0) : null;
   const mime = pickMime(); let mr;
   try{ mr = mime ? new MediaRecorder(stream,{mimeType:mime}) : new MediaRecorder(stream); }catch(e){ mr = new MediaRecorder(stream); }
