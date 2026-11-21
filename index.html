@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Loup-Garou Narrator</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Loup-Garou">
+<meta name="theme-color" content="#0b1020">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="manifest" href="manifest.webmanifest">
+<style>
+:root{
+  --bg:#0b1020; --bg2:#121a33; --card:#17213f; --line:#26335c;
+  --text:#e9ecf7; --muted:#9aa3c4; --moon:#f5d891; --moon2:#e9b866;
+  --red:#ff6b6b; --green:#5fd39a;
+  --serif:"Iowan Old Style","Palatino","Georgia",serif;
+  --sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;
+  --safe-t:env(safe-area-inset-top,0px); --safe-b:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:16px}
+body{min-height:100vh;padding-bottom:calc(76px + var(--safe-b))}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+header{position:sticky;top:0;z-index:5;background:linear-gradient(var(--bg) 70%,rgba(11,16,32,0));
+  padding:calc(var(--safe-t) + 14px) 18px 10px}
+h1{font-family:var(--serif);font-weight:600;font-size:26px;margin:0 0 10px;letter-spacing:.2px}
+h1 span{color:var(--moon)}
+h2{font-family:var(--serif);font-weight:600;font-size:19px;margin:22px 0 8px}
+.seg{display:flex;background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:3px}
+.seg button{flex:1;padding:8px 6px;border-radius:9px;font-size:14px;color:var(--muted)}
+.seg button.on{background:var(--card);color:var(--text);box-shadow:0 1px 0 rgba(255,255,255,.05) inset}
+main{padding:0 16px}
+.view{display:none}.view.on{display:block}
+.hint{color:var(--muted);font-size:14px;line-height:1.45;margin:6px 2px 12px}
+.summary{display:flex;gap:10px;margin:8px 0 6px}
+.pill{flex:1;background:var(--bg2);border:1px solid var(--line);border-radius:14px;padding:10px 12px}
+.pill b{display:block;font-size:22px;font-family:var(--serif);color:var(--moon)}
+.pill small{color:var(--muted);font-size:12px}
+.list{display:flex;flex-direction:column;gap:8px}
+.role{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 12px 12px 14px}
+.role.sel{border-color:#4a5a92}
+.role .top{display:flex;align-items:center;gap:10px}
+.role .nm{flex:1;min-width:0}
+.role .nm b{font-weight:600}
+.role .nm small{display:block;color:var(--muted);font-size:12.5px;margin-top:2px}
+.tag{font-size:11px;color:var(--moon);border:1px solid #4b4430;border-radius:6px;padding:1px 5px;margin-left:6px;vertical-align:1px}
+.step{display:flex;align-items:center;background:var(--bg2);border:1px solid var(--line);border-radius:10px}
+.step button{width:34px;height:34px;font-size:20px;color:var(--moon)}
+.step span{min-width:26px;text-align:center;font-variant-numeric:tabular-nums}
+.dur{display:none;margin-top:10px;align-items:center;gap:10px;color:var(--muted);font-size:13px}
+.role.sel .dur{display:flex}
+.dur .step span{min-width:40px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:8px}
+.row label{flex:1}
+.row small{display:block;color:var(--muted);font-size:12.5px}
+.switch{position:relative;width:48px;height:28px;flex:none}
+.switch input{opacity:0;width:0;height:0}
+.switch i{position:absolute;inset:0;background:#2a365e;border-radius:20px;transition:.2s}
+.switch i:before{content:"";position:absolute;width:22px;height:22px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s}
+.switch input:checked+i{background:var(--moon2)}
+.switch input:checked+i:before{transform:translateX(20px)}
+/* voices */
+.clip{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.clip .hd{display:flex;align-items:center;gap:8px}
+.dot{width:9px;height:9px;border-radius:50%;background:#3a4672;flex:none}
+.dot.ok{background:var(--green)}
+.clip .hd b{flex:1;font-weight:600;font-size:15px}
+.clip .hd small{color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
+.script{font-family:var(--serif);font-style:italic;color:#cfd5ec;font-size:15px;line-height:1.4;margin:8px 0 10px}
+.script textarea{width:100%;min-height:70px;background:var(--bg2);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:8px;font:inherit;font-style:normal}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+.b{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:14px}
+.b.rec{color:#fff;background:#7a2531;border-color:#a3394a}
+.b.rec.on{background:var(--red);animation:pulse 1s infinite}
+.b.dim{color:var(--muted)}
+.b:disabled{opacity:.4}
+@keyframes pulse{50%{opacity:.75}}
+.big{display:block;width:100%;padding:15px;border-radius:14px;font-size:17px;font-weight:600;background:var(--moon);color:#1b1608;margin-top:10px}
+.big.sec{background:var(--card);color:var(--text);border:1px solid var(--line);font-weight:500}
+.filter{display:flex;align-items:center;justify-content:space-between;margin:4px 2px 10px;color:var(--muted);font-size:14px}
+.progress{height:6px;background:var(--bg2);border-radius:4px;overflow:hidden;margin:8px 0 14px}
+.progress i{display:block;height:100%;background:var(--green);width:0;transition:.3s}
+/* play */
+.stage{text-align:center;padding:10px 0 4px}
+.ring{position:relative;width:230px;height:230px;margin:6px auto 8px}
+.ring svg{position:absolute;inset:0;transform:rotate(-90deg)}
+.ring .in{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
+.ring .who{font-family:var(--serif);font-size:24px;line-height:1.15}
+.ring .what{color:var(--muted);font-size:14px;margin-top:6px}
+.ring .num{font-size:40px;font-variant-numeric:tabular-nums;margin-top:4px;color:var(--moon)}
+.ctrls{display:flex;gap:10px;justify-content:center;margin:8px 0}
+.ctrls .b{padding:12px 18px;font-size:16px}
+.order{counter-reset:o;margin:6px 0 0;padding:0;list-style:none}
+.order li{counter-increment:o;display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--line);color:var(--muted)}
+.order li:before{content:counter(o);width:24px;height:24px;border-radius:50%;background:var(--bg2);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:12px;flex:none}
+.order li.now{color:var(--text)}
+.order li.now:before{background:var(--moon);color:#1b1608;border-color:var(--moon)}
+.order li.done{opacity:.45}
+.order li em{margin-left:auto;font-style:normal;font-size:12px}
+.order li em.miss{color:var(--moon2)}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin-top:12px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.chip{border:1px solid var(--line);background:var(--bg2);border-radius:20px;padding:7px 12px;font-size:14px}
+.chip.off{text-decoration:line-through;color:var(--muted);opacity:.6}
+nav{position:fixed;left:0;right:0;bottom:0;z-index:6;display:flex;background:rgba(14,20,40,.96);border-top:1px solid var(--line);
+  padding:6px 8px calc(6px + var(--safe-b));backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+nav button{flex:1;padding:6px 0;color:var(--muted);font-size:11.5px;display:flex;flex-direction:column;align-items:center;gap:3px}
+nav button svg{width:24px;height:24px}
+nav button.on{color:var(--moon)}
+.toast{position:fixed;left:50%;bottom:calc(90px + var(--safe-b));transform:translateX(-50%);background:#263258;color:#fff;
+  padding:10px 16px;border-radius:12px;font-size:14px;opacity:0;transition:.25s;pointer-events:none;z-index:9;max-width:90vw;text-align:center}
+.toast.on{opacity:1}
+.banner{background:#2a2412;border:1px solid #5a4a22;color:#f3e2b5;border-radius:12px;padding:10px 12px;font-size:13.5px;line-height:1.4;margin:6px 0 10px}
+.banner button{color:var(--moon);text-decoration:underline;font-size:13px;margin-top:4px}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-end;z-index:20}
+.modal.on{display:flex}
+.sheet{background:var(--bg2);width:100%;border-radius:18px 18px 0 0;padding:18px 18px calc(18px + var(--safe-b));border-top:1px solid var(--line)}
+.sheet p{color:var(--muted);line-height:1.45}
+</style>
+</head>
+<body>
+<header>
+  <h1>Loup-Garou <span>Narrator</span></h1>
+  <div class="seg" id="modeSeg">
+    <button data-mode="onenight">Une Nuit</button>
+    <button data-mode="classic">Classique</button>
+  </div>
+</header>
+
+<main>
+  <!-- CARDS -->
+  <section class="view on" id="v-cards">
+    <div id="installBanner"></div>
+    <div class="summary">
+      <div class="pill"><b id="sumCards">0</b><small>cards</small></div>
+      <div class="pill"><b id="sumPlayers">0</b><small>players</small></div>
+      <div class="pill"><b id="sumWake">0</b><small>called at night</small></div>
+    </div>
+    <p class="hint" id="cardsHint"></p>
+    <div class="list" id="roleList"></div>
+    <h2>Settings</h2>
+    <div id="settings"></div>
+  </section>
+
+  <!-- VOICES -->
+  <section class="view" id="v-voices">
+    <p class="hint">Record your own voice for each line. Tap <b>Record</b>, read the line, tap <b>Stop</b>. Lines you don't record are read by the iPhone voice.</p>
+    <div class="filter"><span id="voiceCount"></span>
+      <label class="switch"><input type="checkbox" id="onlySel" checked><i></i></label></div>
+    <div class="filter" style="margin-top:-8px"><span></span><small>Only lines for my selected cards</small></div>
+    <div class="progress"><i id="voiceBar"></i></div>
+    <div class="list" id="clipList"></div>
+    <h2>Backup</h2>
+    <p class="hint">Your voices are stored on this iPhone. Make a backup to Files / iCloud Drive now and then. You can restore it here or on a new phone.</p>
+    <button class="big sec" id="btnExport">Backup voices to Files</button>
+    <button class="big sec" id="btnImport">Restore from backup</button>
+    <input type="file" id="importFile" accept=".json,application/json" hidden>
+    <input type="file" id="clipFile" accept="audio/*" hidden>
+  </section>
+
+  <!-- PLAY -->
+  <section class="view" id="v-play">
+    <div class="stage">
+      <div class="ring">
+        <svg viewBox="0 0 230 230"><circle cx="115" cy="115" r="104" fill="none" stroke="#1d2850" stroke-width="10"/>
+          <circle id="ringArc" cx="115" cy="115" r="104" fill="none" stroke="#f5d891" stroke-width="10" stroke-linecap="round" stroke-dasharray="653.5" stroke-dashoffset="653.5"/></svg>
+        <div class="in"><div class="who" id="stWho">Ready</div><div class="what" id="stWhat">Place the phone in the middle</div><div class="num" id="stNum"></div></div>
+      </div>
+      <div class="ctrls" id="ctrls"></div>
+    </div>
+    <div id="dayPanel"></div>
+    <h2 id="orderTitle">Night order</h2>
+    <ol class="order" id="orderList"></ol>
+  </section>
+</main>
+
+<nav>
+  <button data-view="cards" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="11" height="15" rx="2"/><path d="M8 3h9a2 2 0 0 1 2 2v13"/></svg>Cards</button>
+  <button data-view="voices"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>Voices</button>
+  <button data-view="play"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>Play</button>
+</nav>
+
+<div class="toast" id="toast"></div>
+<div class="modal" id="modal"><div class="sheet" id="sheet"></div></div>
+
+<script>
+"use strict";
+/* ---------------- Game data ---------------- */
+const DATA = {
+  onenight: {
+    title: "Loup-Garou pour une Nuit",
+    center: 3,
+    intro: { label: "Night falls", text: "Tout le monde, fermez les yeux." },
+    outro: { label: "Everyone wakes up", text: "Tout le monde, réveillez-vous ! Vous avez quelques minutes pour démasquer le Loup-Garou." },
+    extras: [ { id: "timeup", label: "Time's up / vote", text: "Le temps est écoulé ! À trois, désignez la personne que vous soupçonnez. Un… deux… trois !" } ],
+    roles: [
+      { id:"doppel", name:"Doppelgänger", max:1, dur:12, desc:"Copies another player's role",
+        wake:"Doppelgänger, réveille-toi. Regarde la carte d'un autre joueur : tu deviens ce personnage.", sleep:"Doppelgänger, ferme les yeux." },
+      { id:"loups", name:"Loups-Garous", max:2, def:2, dur:12, desc:"See each other; a lone wolf may peek at the center",
+        wake:"Loups-Garous, réveillez-vous et regardez-vous. Si tu es seul, tu peux regarder une carte du centre.", sleep:"Loups-Garous, fermez les yeux." },
+      { id:"sbire", name:"Sbire", max:1, dur:8, desc:"Sees the werewolves",
+        wake:"Sbire, réveille-toi. Loups-Garous, levez le pouce pour que le Sbire vous voie.", sleep:"Loups-Garous, baissez le pouce. Sbire, ferme les yeux." },
+      { id:"macons", name:"Francs-Maçons", max:2, dur:8, desc:"See each other",
+        wake:"Francs-Maçons, réveillez-vous et regardez-vous.", sleep:"Francs-Maçons, fermez les yeux." },
+      { id:"voyante", name:"Voyante", max:1, def:1, dur:12, desc:"Looks at one player's card or two center cards",
+        wake:"Voyante, réveille-toi. Tu peux regarder la carte d'un autre joueur, ou deux cartes du centre.", sleep:"Voyante, ferme les yeux." },
+      { id:"voleur", name:"Voleur", max:1, def:1, dur:10, desc:"Swaps with a player, then looks",
+        wake:"Voleur, réveille-toi. Tu peux échanger ta carte avec celle d'un autre joueur, puis regarder ta nouvelle carte.", sleep:"Voleur, ferme les yeux." },
+      { id:"noiseuse", name:"Noiseuse", max:1, def:1, dur:10, desc:"Swaps two other players' cards",
+        wake:"Noiseuse, réveille-toi. Tu peux échanger les cartes de deux autres joueurs, sans les regarder.", sleep:"Noiseuse, ferme les yeux." },
+      { id:"soulard", name:"Soûlard", max:1, dur:8, desc:"Swaps with a center card without looking",
+        wake:"Soûlard, réveille-toi. Échange ta carte avec une carte du centre, sans la regarder.", sleep:"Soûlard, ferme les yeux." },
+      { id:"insomniaque", name:"Insomniaque", max:1, dur:6, desc:"Looks at their own card",
+        wake:"Insomniaque, réveille-toi et regarde ta carte.", sleep:"Insomniaque, ferme les yeux." },
+      { id:"chasseur", name:"Chasseur", max:1, wakes:false, desc:"Doesn't wake up" },
+      { id:"tanneur", name:"Tanneur", max:1, wakes:false, desc:"Doesn't wake up" },
+      { id:"villageois", name:"Villageois", max:3, def:1, wakes:false, desc:"Doesn't wake up" }
+    ]
+  },
+  classic: {
+    title: "Les Loups-Garous de Thiercelieux",
+    center: 0,
+    intro: { label: "Night falls", text: "La nuit tombe sur Thiercelieux. Tout le village s'endort." },
+    outro: { label: "Morning", text: "Le jour se lève, le village se réveille. Les cartes tournées désignent les victimes de la nuit." },
+    extras: [ { id:"vote", label:"Debate & vote", text:"Villageois, c'est l'heure du débat. Discutez, puis votez pour éliminer un suspect." } ],
+    roles: [
+      { id:"voleur", name:"Voleur", max:1, first:true, dur:15, desc:"Night 1: may swap with one of 2 extra cards",
+        wake:"Voleur, réveille-toi. Tu peux échanger ta carte avec l'une des deux cartes du centre.", sleep:"Voleur, rendors-toi." },
+      { id:"cupidon", name:"Cupidon", max:1, first:true, dur:12, desc:"Night 1: makes two players fall in love",
+        wake:"Cupidon, réveille-toi. Désigne deux joueurs qui seront amoureux, en les touchant discrètement.", sleep:"Cupidon, rendors-toi." },
+      { id:"amoureux", name:"Les Amoureux", auto:"cupidon", first:true, dur:10, desc:"Called automatically with Cupidon",
+        wake:"Amoureux, réveillez-vous et découvrez-vous.", sleep:"Amoureux, rendormez-vous." },
+      { id:"enfant", name:"Enfant sauvage", max:1, first:true, dur:8, desc:"Night 1: picks a role model",
+        wake:"Enfant sauvage, réveille-toi. Désigne ton modèle en le touchant discrètement.", sleep:"Enfant sauvage, rendors-toi." },
+      { id:"voyante", name:"Voyante", max:1, def:1, dur:12, desc:"Looks at one player's card",
+        wake:"Voyante, réveille-toi. Choisis un joueur et regarde discrètement sa carte.", sleep:"Voyante, rendors-toi." },
+      { id:"loups", name:"Loups-Garous", max:4, def:2, dur:20, desc:"Pick a victim and turn their card slightly",
+        wake:"Loups-Garous, réveillez-vous. Mettez-vous d'accord en silence sur une victime, et tournez légèrement sa carte.", sleep:"Loups-Garous, rendormez-vous." },
+      { id:"sorciere", name:"Sorcière", max:1, def:1, dur:15, desc:"May save the victim or poison someone",
+        wake:"Sorcière, réveille-toi. La carte tournée est celle de la victime. Tu peux la sauver en la redressant, ou empoisonner un joueur en tournant sa carte.", sleep:"Sorcière, rendors-toi." },
+      { id:"petitefille", name:"Petite Fille", max:1, wakes:false, desc:"Doesn't get called" },
+      { id:"chasseur", name:"Chasseur", max:1, wakes:false, desc:"Doesn't get called" },
+      { id:"ancien", name:"Ancien", max:1, wakes:false, desc:"Doesn't get called" },
+      { id:"idiot", name:"Idiot du village", max:1, wakes:false, desc:"Doesn't get called" },
+      { id:"bouc", name:"Bouc émissaire", max:1, wakes:false, desc:"Doesn't get called" },
+      { id:"villageois", name:"Villageois", max:12, def:4, wakes:false, desc:"Doesn't get called" }
+    ]
+  }
+};
+
+/* ---------------- Settings (localStorage) ---------------- */
+const LS_KEY = "lgn.settings.v1";
+function defaults(){
+  const s = { mode:"onenight", counts:{}, durs:{}, texts:{}, tts:true, gap:2, discuss:5, onlySel:true };
+  for (const m in DATA){ s.counts[m]={}; s.durs[m]={};
+    DATA[m].roles.forEach(r=>{ if(!r.auto) s.counts[m][r.id]=r.def||0; if(r.wakes!==false) s.durs[m][r.id]=r.dur; }); }
+  return s;
+}
+let S = defaults();
+try { const raw = localStorage.getItem(LS_KEY); if (raw){ const o = JSON.parse(raw);
+  S = Object.assign(S, o); for (const m in DATA){ S.counts[m]=Object.assign(defaults().counts[m], (o.counts||{})[m]); S.durs[m]=Object.assign(defaults().durs[m], (o.durs||{})[m]); } } } catch(e){}
+function save(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(S)); }catch(e){} }
+
+/* ---------------- Voice storage (IndexedDB) ---------------- */
+const mem = new Map(); let dbp = null;
+function db(){
+  if (dbp) return dbp;
+  dbp = new Promise((res)=>{
+    try{
+      const rq = indexedDB.open("lgn-voices", 1);
+      rq.onupgradeneeded = ()=> rq.result.createObjectStore("clips", { keyPath:"key" });
+      rq.onsuccess = ()=> res(rq.result); rq.onerror = ()=> res(null);
+    }catch(e){ res(null); }
+  });
+  return dbp;
+}
+async function idb(mode, fn){
+  const d = await db(); if (!d) return null;
+  return new Promise((res)=>{ try{
+    const tx = d.transaction("clips", mode); const st = tx.objectStore("clips"); const rq = fn(st);
+    tx.oncomplete = ()=> res(rq ? rq.result : true); tx.onerror = ()=> res(null);
+  }catch(e){ res(null); } });
+}
+const Voices = {
+  cache: new Map(),
+  async load(){ const all = await idb("readonly", st=>st.getAll()); (all||[...mem.values()]).forEach(c=>this.cache.set(c.key,c)); },
+  get(k){ return this.cache.get(k); },
+  has(k){ return this.cache.has(k); },
+  async put(rec){ this.cache.set(rec.key, rec); mem.set(rec.key, rec); await idb("readwrite", st=>st.put(rec)); },
+  async del(k){ this.cache.delete(k); mem.delete(k); await idb("readwrite", st=>st.delete(k)); }
+};
+try{ navigator.storage && navigator.storage.persist && navigator.storage.persist(); }catch(e){}
+
+const EMBED = (()=>{ try{ return window.top!==window; }catch(e){ return true; } })();
+/* ---------------- Helpers ---------------- */
+const $ = s=>document.querySelector(s);
+const el = (t,a={},...kids)=>{ const n=document.createElement(t); for(const k in a){ if(k==="class") n.className=a[k]; else if(k.startsWith("on")) n.addEventListener(k.slice(2),a[k]); else if(k==="html") n.innerHTML=a[k]; else n.setAttribute(k,a[k]); } kids.flat().forEach(c=>n.append(c instanceof Node?c:document.createTextNode(c))); return n; };
+let toastT; function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("on"); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove("on"),2600); }
+const M = ()=> DATA[S.mode];
+const count = id => S.counts[S.mode][id]||0;
+function isSelected(r){ return r.auto ? count(r.auto)>0 : count(r.id)>0; }
+function fmtSec(s){ s=Math.max(0,Math.ceil(s)); return s>=60 ? Math.floor(s/60)+":"+String(s%60).padStart(2,"0") : s+"s"; }
+function textFor(key, def){ return S.texts[key] ?? def; }
+
+/* All voice lines for the current mode */
+function clipsForMode(onlySel){
+  const m = M(), out = [], k = S.mode;
+  out.push({ key:`${k}.intro`, label:m.intro.label, text:m.intro.text, group:"Start" });
+  m.roles.forEach(r=>{ if (r.wakes===false) return; if (onlySel && !isSelected(r)) return;
+    out.push({ key:`${k}.${r.id}.wake`, label:`${r.name} · wake up`, text:r.wake, role:r.id });
+    out.push({ key:`${k}.${r.id}.sleep`, label:`${r.name} · close eyes`, text:r.sleep, role:r.id }); });
+  out.push({ key:`${k}.outro`, label:m.outro.label, text:m.outro.text });
+  m.extras.forEach(x=> out.push({ key:`${k}.${x.id}`, label:x.label, text:x.text }));
+  return out.map(c=>({ ...c, text:textFor(c.key, c.text) }));
+}
+
+/* ---------------- Mode + navigation ---------------- */
+function setMode(m){ if (Run.active) { toast("Stop the game first"); return; } S.mode=m; save(); renderAll(); }
+document.querySelectorAll("#modeSeg button").forEach(b=> b.onclick=()=>setMode(b.dataset.mode));
+document.querySelectorAll("nav button").forEach(b=> b.onclick=()=>{
+  document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("on",x===b));
+  document.querySelectorAll(".view").forEach(v=>v.classList.toggle("on", v.id==="v-"+b.dataset.view));
+  if (b.dataset.view==="voices") renderVoices(); if (b.dataset.view==="play") renderPlay();
+  window.scrollTo(0,0);
+});
+
+/* ---------------- Cards view ---------------- */
+function stepper(val, onMinus, onPlus, fmt=v=>v){
+  return el("div",{class:"step"}, el("button",{onclick:onMinus,"aria-label":"less"},"−"), el("span",{},fmt(val)), el("button",{onclick:onPlus,"aria-label":"more"},"+"));
+}
+function renderCards(){
+  const m = M(), list = $("#roleList"); list.innerHTML="";
+  m.roles.forEach(r=>{
+    if (r.auto) return;
+    const c = count(r.id);
+    const node = el("div",{class:"role"+(c?" sel":"")},
+      el("div",{class:"top"},
+        el("div",{class:"nm"}, el("b",{},r.name), r.wakes===false?"":el("span",{class:"tag"},"called"), el("small",{},r.desc)),
+        stepper(c, ()=>{ S.counts[S.mode][r.id]=Math.max(0,c-1); save(); renderCards(); },
+                   ()=>{ S.counts[S.mode][r.id]=Math.min(r.max,c+1); save(); renderCards(); })
+      ));
+    if (r.wakes!==false){
+      const d = S.durs[S.mode][r.id];
+      node.append(el("div",{class:"dur"},"Time to act", stepper(d,
+        ()=>{ S.durs[S.mode][r.id]=Math.max(3,d-(d>15?5:1)); save(); renderCards(); },
+        ()=>{ S.durs[S.mode][r.id]=Math.min(120,d+(d>=15?5:1)); save(); renderCards(); }, v=>v+"s")));
+    }
+    list.append(node);
+  });
+  const total = m.roles.reduce((a,r)=>a+(r.auto?0:count(r.id)),0);
+  const extra = S.mode==="onenight" ? 3 : (count("voleur")?2:0);
+  $("#sumCards").textContent = total;
+  $("#sumPlayers").textContent = Math.max(0,total-extra);
+  $("#sumWake").textContent = m.roles.filter(r=>r.wakes!==false && isSelected(r)).length;
+  $("#cardsHint").textContent = S.mode==="onenight"
+    ? "Pick the cards in play. 3 cards always go face down in the middle, so players = cards − 3."
+    : "Pick the cards in play. Keep the cards face down in front of each player during the game. With the Voleur, add 2 extra cards in the middle.";
+  renderSettings();
+}
+function renderSettings(){
+  const box = $("#settings"); box.innerHTML="";
+  box.append(el("div",{class:"row"}, el("label",{},"Pause between lines", el("small",{},"Silence after each voice line")),
+    stepper(S.gap, ()=>{S.gap=Math.max(0,S.gap-1);save();renderSettings();}, ()=>{S.gap=Math.min(10,S.gap+1);save();renderSettings();}, v=>v+"s")));
+  if (S.mode==="onenight") box.append(el("div",{class:"row"}, el("label",{},"Debate time", el("small",{},"Timer after everyone wakes up")),
+    stepper(S.discuss, ()=>{S.discuss=Math.max(1,S.discuss-1);save();renderSettings();}, ()=>{S.discuss=Math.min(15,S.discuss+1);save();renderSettings();}, v=>v+" min")));
+  const sw = el("label",{class:"switch"}); const inp = el("input",{type:"checkbox"}); inp.checked=S.tts;
+  inp.onchange=()=>{S.tts=inp.checked;save();}; sw.append(inp, el("i"));
+  box.append(el("div",{class:"row"}, el("label",{},"iPhone voice for missing lines", el("small",{},"Reads lines you haven't recorded")), sw));
+}
+
+/* ---------------- Voices view ---------------- */
+let Rec = null; // {key, mr, chunks, stream, t0, timer}
+let pickKey = null;
+function renderVoices(){
+  $("#onlySel").checked = S.onlySel;
+  const clips = clipsForMode(S.onlySel), list = $("#clipList"); list.innerHTML="";
+  const done = clips.filter(c=>Voices.has(c.key)).length;
+  $("#voiceCount").textContent = `${done} of ${clips.length} lines recorded`;
+  $("#voiceBar").style.width = (clips.length? done/clips.length*100:0)+"%";
+  clips.forEach(c=> list.append(clipCard(c)));
+}
+$("#onlySel").onchange = e=>{ S.onlySel=e.target.checked; save(); renderVoices(); };
+function clipCard(c){
+  const rec = Voices.get(c.key), recording = Rec && Rec.key===c.key;
+  const script = el("div",{class:"script"}, "« "+c.text+" »");
+  const card = el("div",{class:"clip"},
+    el("div",{class:"hd"}, el("span",{class:"dot"+(rec?" ok":"")}), el("b",{},c.label), el("small",{id:"t-"+cssId(c.key)}, rec? fmtSec(rec.dur||0) : "not recorded")),
+    script,
+    el("div",{class:"btns"},
+      el("button",{class:"b rec"+(recording?" on":""), onclick:()=> recording? stopRec() : startRec(c.key)}, recording?"■ Stop":"● Record"),
+      el("button",{class:"b", onclick:()=>preview(c)}, "▶ Play"),
+      el("button",{class:"b dim", onclick:()=>editText(c, script)}, "✎ Text"),
+      el("button",{class:"b dim", onclick:()=>{ pickKey=c.key; $("#clipFile").click(); }}, "Import"),
+      rec ? el("button",{class:"b dim", onclick:async()=>{ await Voices.del(c.key); renderVoices(); toast("Recording deleted"); }}, "Delete") : ""
+    ));
+  if (!rec) card.querySelector(".btns .b:nth-child(2)").disabled = true;
+  return card;
+}
+function cssId(k){ return k.replace(/[^a-z0-9]/gi,"_"); }
+function editText(c, box){
+  const def = clipsDefault(c.key);
+  const ta = el("textarea",{}); ta.value = c.text;
+  box.innerHTML=""; box.append(ta, el("div",{class:"btns",style:"margin-top:8px"},
+    el("button",{class:"b",onclick:()=>{ S.texts[c.key]=ta.value.trim()||def; if(S.texts[c.key]===def) delete S.texts[c.key]; save(); renderVoices(); }},"Save text"),
+    el("button",{class:"b dim",onclick:()=>{ delete S.texts[c.key]; save(); renderVoices(); }},"Reset")));
+  ta.focus();
+}
+function clipsDefault(key){ const all = (()=>{ const t=S.texts; S.texts={}; const r=clipsForMode(false); S.texts=t; return r; })(); return (all.find(x=>x.key===key)||{}).text||""; }
+
+function pickMime(){
+  const opts = ["audio/mp4","audio/aac","audio/webm;codecs=opus","audio/webm"];
+  try{ for (const o of opts) if (window.MediaRecorder && MediaRecorder.isTypeSupported(o)) return o; }catch(e){}
+  return "";
+}
+async function startRec(key){
+  if (Rec) await stopRec();
+  stopPreview();
+  if (!navigator.mediaDevices || !window.MediaRecorder || (EMBED && !navigator.mediaDevices.getUserMedia)){ toast("Recording isn't available here. Open the app from your home screen."); return; }
+  let stream;
+  try{ stream = await navigator.mediaDevices.getUserMedia({ audio:{ echoCancellation:true, noiseSuppression:true } }); }
+  catch(e){ toast(EMBED ? "The microphone is blocked in this test version. Use Import with a Voice Memo instead." : "Microphone access was refused. Allow it in Settings › Safari › Microphone."); return; }
+  const mime = pickMime(); let mr;
+  try{ mr = mime ? new MediaRecorder(stream,{mimeType:mime}) : new MediaRecorder(stream); }catch(e){ mr = new MediaRecorder(stream); }
+  Rec = { key, mr, chunks:[], stream, t0:Date.now() };
+  mr.ondataavailable = e=>{ if (e.data && e.data.size) Rec && Rec.chunks.push(e.data); };
+  mr.start();
+  Rec.timer = setInterval(()=>{ const t=document.getElementById("t-"+cssId(key)); if(t) t.textContent="● "+fmtSec((Date.now()-Rec.t0)/1000);
+    if (Date.now()-Rec.t0 > 90000) stopRec(); }, 250);
+  renderVoices();
+}
+function stopRec(){
+  return new Promise(res=>{
+    if (!Rec) return res();
+    const r = Rec; clearInterval(r.timer);
+    r.mr.onstop = async ()=>{
+      r.stream.getTracks().forEach(t=>t.stop());
+      const type = r.mr.mimeType || pickMime() || "audio/mp4";
+      const blob = new Blob(r.chunks, { type });
+      Rec = null;
+      if (blob.size < 500){ toast("Recording too short"); renderVoices(); return res(); }
+      const data = await blob.arrayBuffer();
+      const dur = await measure(blob, (Date.now()-r.t0)/1000);
+      await Voices.put({ key:r.key, mime:type, data, dur, ts:Date.now() });
+      renderVoices(); toast("Saved ✓"); res();
+    };
+    try{ r.mr.stop(); }catch(e){ Rec=null; res(); }
+  });
+}
+function measure(blob, fallback){
+  return new Promise(res=>{ try{ const a=new Audio(); const u=URL.createObjectURL(blob); a.preload="metadata";
+    a.onloadedmetadata=()=>{ const d=isFinite(a.duration)?a.duration:fallback; URL.revokeObjectURL(u); res(d); };
+    a.onerror=()=>res(fallback); a.src=u; setTimeout(()=>res(fallback),1500); }catch(e){ res(fallback); } });
+}
+$("#clipFile").onchange = async e=>{
+  const f = e.target.files[0]; e.target.value=""; if (!f || !pickKey) return;
+  const data = await f.arrayBuffer(); const dur = await measure(f, 0);
+  await Voices.put({ key:pickKey, mime:f.type||"audio/mp4", data, dur, ts:Date.now() });
+  renderVoices(); toast("Imported ✓");
+};
+let prevAudio = null;
+function preview(c){
+  stopPreview(); const r = Voices.get(c.key); if (!r) return;
+  const u = URL.createObjectURL(new Blob([r.data],{type:r.mime})); prevAudio = new Audio(u);
+  prevAudio.onended=()=>URL.revokeObjectURL(u); prevAudio.play().catch(()=>toast("Couldn't play this file"));
+}
+function stopPreview(){ if (prevAudio){ try{prevAudio.pause();}catch(e){} prevAudio=null; } }
+
+/* Backup / restore */
+function blobToB64(buf, mime){ return new Promise(res=>{ const fr=new FileReader(); fr.onload=()=>res(String(fr.result).split(",")[1]); fr.readAsDataURL(new Blob([buf],{type:mime})); }); }
+function b64ToBuf(b64){ const bin=atob(b64); const u=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i); return u.buffer; }
+$("#btnExport").onclick = async ()=>{
+  const clips = [...Voices.cache.values()];
+  if (!clips.length){ toast("No recordings yet"); return; }
+  const out = { app:"loup-garou-narrator", version:1, date:new Date().toISOString(), texts:S.texts, clips:[] };
+  for (const c of clips) out.clips.push({ key:c.key, mime:c.mime, dur:c.dur, b64: await blobToB64(c.data, c.mime) });
+  const name = "loup-garou-voices-"+new Date().toISOString().slice(0,10)+".json";
+  const file = new File([JSON.stringify(out)], name, { type:"application/json" });
+  if (EMBED && window.claude && window.claude.use){
+    try{ const dl = await window.claude.use("downloads");
+      if (dl){ await dl.save({ filename:name, data:file }); toast("Backup saved ✓"); return; } }
+    catch(e){ if (e && e.code==="declined") return; }
+  }
+  try{
+    if (navigator.canShare && navigator.canShare({ files:[file] })){ await navigator.share({ files:[file], title:"Loup-Garou voices" }); return; }
+  }catch(e){ if (e && e.name==="AbortError") return; }
+  const u = URL.createObjectURL(file); const a = el("a",{href:u,download:name}); document.body.append(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(u), 5000);
+};
+$("#btnImport").onclick = ()=> $("#importFile").click();
+$("#importFile").onchange = async e=>{
+  const f = e.target.files[0]; e.target.value=""; if (!f) return;
+  try{
+    const o = JSON.parse(await f.text());
+    if (!o || !Array.isArray(o.clips)) throw 0;
+    for (const c of o.clips) await Voices.put({ key:c.key, mime:c.mime, dur:c.dur, data:b64ToBuf(c.b64), ts:Date.now() });
+    if (o.texts) { S.texts = Object.assign(S.texts, o.texts); save(); }
+    renderVoices(); toast(`Restored ${o.clips.length} recordings ✓`);
+  }catch(err){ toast("This file isn't a voice backup"); }
+};
+
+/* ---------------- Player engine ---------------- */
+const audio = new Audio(); audio.setAttribute("playsinline","");
+const SILENT = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=";
+const Run = { active:false, paused:false, skip:false, cancel:false, stopCur:null, night:1, out:new Set(), phase:"idle", wake:null };
+let frVoice = null;
+function loadVoices(){ try{ const vs = speechSynthesis.getVoices(); frVoice = vs.find(v=>/fr[-_]FR/i.test(v.lang)) || vs.find(v=>/^fr/i.test(v.lang)) || null; }catch(e){} }
+try{ loadVoices(); speechSynthesis.onvoiceschanged = loadVoices; }catch(e){}
+
+function playKey(key, text){
+  return new Promise(res=>{
+    const r = Voices.get(key);
+    let done=false; const fin=()=>{ if(done) return; done=true; Run.stopCur=null; res(); };
+    if (r){
+      const u = URL.createObjectURL(new Blob([r.data],{type:r.mime}));
+      audio.onended = ()=>{ URL.revokeObjectURL(u); fin(); }; audio.onerror = fin;
+      Run.stopCur = ()=>{ try{audio.pause();}catch(e){} fin(); };
+      audio.src = u; audio.play().catch(fin);
+    } else if (S.tts && window.speechSynthesis && text){
+      const u = new SpeechSynthesisUtterance(text); u.lang="fr-FR"; if (frVoice) u.voice=frVoice; u.rate=0.95;
+      u.onend=fin; u.onerror=fin;
+      Run.stopCur = ()=>{ try{speechSynthesis.cancel();}catch(e){} fin(); };
+      try{ speechSynthesis.cancel(); speechSynthesis.speak(u); }catch(e){ fin(); }
+      const guard = setInterval(()=>{ if (done) return clearInterval(guard); if (!Run.paused && !speechSynthesis.speaking && !speechSynthesis.pending){ clearInterval(guard); setTimeout(fin,300); } }, 700);
+    } else fin();
+  });
+}
+function wait(sec, show){
+  return new Promise(res=>{
+    let left = sec; const step=200;
+    const t = setInterval(()=>{
+      if (Run.cancel || Run.skip){ clearInterval(t); return res(); }
+      if (!Run.paused){ left -= step/1000; if (show) show(left, sec); }
+      if (left<=0){ clearInterval(t); res(); }
+    }, step);
+    if (show) show(left, sec);
+  });
+}
+function setStage(who, what, num, frac){
+  $("#stWho").textContent=who; $("#stWhat").textContent=what||""; $("#stNum").textContent=num||"";
+  $("#ringArc").style.strokeDashoffset = 653.5*(1-(frac==null?0:frac));
+}
+async function wakeLock(on){
+  try{ if (on && "wakeLock" in navigator){ Run.wake = await navigator.wakeLock.request("screen"); }
+       else if (!on && Run.wake){ await Run.wake.release(); Run.wake=null; } }catch(e){}
+}
+document.addEventListener("visibilitychange", ()=>{ if (document.visibilityState==="visible" && Run.active) wakeLock(true); });
+
+function nightRoles(night){
+  return M().roles.filter(r=> r.wakes!==false && isSelected(r) && (!r.first || night===1) && !Run.out.has(r.id));
+}
+function buildNight(night){
+  const k=S.mode, m=M(), steps=[];
+  steps.push({ who:m.intro.label, items:[{clip:`${k}.intro`, text:textFor(`${k}.intro`,m.intro.text)}] });
+  nightRoles(night).forEach(r=> steps.push({ role:r.id, who:r.name, items:[
+    {clip:`${k}.${r.id}.wake`, text:textFor(`${k}.${r.id}.wake`, r.wake), what:"Waking up"},
+    {wait:S.durs[k][r.id], what:"Acting…"},
+    {clip:`${k}.${r.id}.sleep`, text:textFor(`${k}.${r.id}.sleep`, r.sleep), what:"Closing eyes"} ]}));
+  steps.push({ who:m.outro.label, items:[{clip:`${k}.outro`, text:textFor(`${k}.outro`, m.outro.text)}] });
+  return steps;
+}
+async function runSteps(steps){
+  for (let i=0;i<steps.length;i++){
+    const s = steps[i]; markOrder(i);
+    for (const it of s.items){
+      if (Run.cancel) return false;
+      Run.skip=false;
+      if (it.clip){ setStage(s.who, it.what||"Speaking", "", null); await playKey(it.clip, it.text);
+        if (Run.cancel) return false; if (S.gap && !Run.skip) await wait(S.gap); }
+      else if (it.wait){ await wait(it.wait, (l,t)=> setStage(s.who, Run.paused?"Paused":it.what, fmtSec(l), 1-l/t)); }
+    }
+  }
+  markOrder(steps.length); return !Run.cancel;
+}
+function unlockAudio(){ try{ audio.src=SILENT; audio.play().catch(()=>{}); }catch(e){}
+  try{ if (S.tts && window.speechSynthesis){ const u=new SpeechSynthesisUtterance(" "); u.volume=0; speechSynthesis.speak(u); } }catch(e){} }
+
+async function startNight(){
+  if (Run.active) return;
+  if (!nightRoles(Run.night).length && Run.night===1){ toast("Select cards that wake up first"); return; }
+  unlockAudio(); stopPreview();
+  Object.assign(Run, { active:true, paused:false, skip:false, cancel:false, phase:"night" });
+  wakeLock(true); renderPlay();
+  const ok = await runSteps(buildNight(Run.night));
+  Run.active=false; wakeLock(false);
+  if (!ok){ resetGame(); return; }
+  Run.phase="day";
+  if (S.mode==="onenight") setStage("Debate", "Find the werewolf", fmtSec(S.discuss*60), 0);
+  else setStage("Day "+Run.night, "Debate and vote", "", 0);
+  renderPlay();
+}
+async function startDebate(){
+  if (Run.active) return; unlockAudio();
+  Object.assign(Run, { active:true, paused:false, skip:false, cancel:false, phase:"debate" }); wakeLock(true); renderPlay();
+  await wait(S.discuss*60, (l,t)=> setStage("Debate", Run.paused?"Paused":"Find the werewolf", fmtSec(l), 1-l/t));
+  if (!Run.cancel){ Run.skip=false; setStage("Vote!", "Point at your suspect", "", 1); await playKey(`${S.mode}.timeup`, textFor(`${S.mode}.timeup`, DATA.onenight.extras[0].text)); }
+  Run.active=false; wakeLock(false); Run.phase = Run.cancel ? "idle" : "end"; if (Run.cancel) resetGame(); else renderPlay();
+}
+async function playVote(){
+  if (Run.active) return; unlockAudio(); Object.assign(Run,{active:true,cancel:false,skip:false,paused:false});
+  renderPlay(); setStage("Day "+Run.night, "Debate and vote", "", 0);
+  await playKey(`classic.vote`, textFor("classic.vote", DATA.classic.extras[0].text)); Run.active=false; renderPlay();
+}
+function nextNight(){ Run.night++; Run.phase="idle"; startNight(); }
+function togglePause(){
+  Run.paused=!Run.paused;
+  try{ if (Run.paused){ audio.pause(); speechSynthesis.pause(); } else { if (audio.src && !audio.ended && audio.currentTime>0) audio.play().catch(()=>{}); speechSynthesis.resume(); } }catch(e){}
+  renderCtrls();
+}
+function skip(){ Run.skip=true; Run.paused=false; if (Run.stopCur) Run.stopCur(); renderCtrls(); }
+function stop(){ Run.cancel=true; Run.paused=false; if (Run.stopCur) Run.stopCur(); }
+function resetGame(){ Object.assign(Run,{active:false,paused:false,skip:false,cancel:false,night:1,phase:"idle"}); Run.out.clear(); wakeLock(false);
+  setStage("Ready","Place the phone in the middle","",0); renderPlay(); }
+
+/* ---------------- Play view ---------------- */
+function markOrder(i){ document.querySelectorAll("#orderList li").forEach((li,j)=>{ li.classList.toggle("done", j<i); li.classList.toggle("now", j===i); }); }
+function renderCtrls(){
+  const c=$("#ctrls"); c.innerHTML="";
+  if (Run.active){
+    c.append(el("button",{class:"b",onclick:togglePause}, Run.paused?"▶ Resume":"❚❚ Pause"),
+             el("button",{class:"b",onclick:skip},"⏭ Skip"),
+             el("button",{class:"b dim",onclick:stop},"■ Stop"));
+  }
+}
+function renderPlay(){
+  renderCtrls();
+  const day = $("#dayPanel"); day.innerHTML="";
+  if (!Run.active){
+    if (Run.phase==="idle"){
+      day.append(el("button",{class:"big",onclick:startNight}, Run.night>1?`Start night ${Run.night}`:"Start the night"));
+      const missing = clipsForMode(true).filter(c=>!Voices.has(c.key)).length;
+      if (missing) day.append(el("p",{class:"hint",style:"text-align:center"}, `${missing} line${missing>1?"s":""} not recorded yet${S.tts?" — the iPhone voice will read them.":" — they'll be skipped."}`));
+    } else if (Run.phase==="day" && S.mode==="onenight"){
+      day.append(el("button",{class:"big",onclick:startDebate}, `Start ${S.discuss}-min debate timer`),
+                 el("button",{class:"big sec",onclick:resetGame},"New game"));
+    } else if (Run.phase==="day" && S.mode==="classic"){
+      const p = el("div",{class:"panel"}, el("b",{},`Day ${Run.night}`),
+        el("p",{class:"hint",style:"margin:6px 0 0"},"Tap a role to stop calling it (for example when it's out of the game). Many narrators keep calling dead roles so nobody gets a clue."));
+      const chips = el("div",{class:"chips"});
+      M().roles.filter(r=>r.wakes!==false && !r.first && isSelected(r)).forEach(r=>{
+        chips.append(el("button",{class:"chip"+(Run.out.has(r.id)?" off":""),onclick:()=>{ Run.out.has(r.id)?Run.out.delete(r.id):Run.out.add(r.id); renderPlay(); }}, r.name)); });
+      p.append(chips); day.append(p,
+        el("button",{class:"big sec",onclick:playVote},"▶ Play debate & vote line"),
+        el("button",{class:"big",onclick:nextNight},`Start night ${Run.night+1}`),
+        el("button",{class:"big sec",onclick:resetGame},"End game"));
+    } else if (Run.phase==="end"){
+      day.append(el("button",{class:"big",onclick:resetGame},"New game"));
+    }
+  }
+  // order list
+  const ol=$("#orderList"); ol.innerHTML="";
+  const showNight = S.mode==="onenight" ? 1 : (Run.phase==="day" ? Run.night+1 : Run.night);
+  $("#orderTitle").textContent = S.mode==="classic" ? `Night ${showNight} order` : "Night order";
+  const k=S.mode, m=M();
+  const item = (name,key)=> el("li",{}, name, el("em",{class:Voices.has(key)?"":"miss"}, Voices.has(key)?"your voice":(S.tts?"iPhone voice":"no voice")));
+  ol.append(item(m.intro.label, `${k}.intro`));
+  nightRoles(showNight).forEach(r=> ol.append(item(r.name, `${k}.${r.id}.wake`)));
+  ol.append(item(m.outro.label, `${k}.outro`));
+}
+
+/* ---------------- Install banner ---------------- */
+function renderInstall(){
+  const standalone = window.navigator.standalone || matchMedia("(display-mode: standalone)").matches;
+  const b=$("#installBanner"); b.innerHTML="";
+  let dismissed=false; try{ dismissed = localStorage.getItem("lgn.hideInstall")==="1"; }catch(e){}
+  if (EMBED){
+    b.append(el("div",{class:"banner"}, el("b",{},"Test version. "), "Recording with the microphone is blocked inside Claude. To add your voice here: record in ",
+      el("b",{},"Voice Memos"), ", share it to ", el("b",{},"Save to Files"), ", then tap ", el("b",{},"Import"), " on the line. Lines without a recording use the iPhone voice."));
+    return;
+  }
+  if (standalone || dismissed) return;
+  b.append(el("div",{class:"banner"}, "Install it: tap Share ", el("b",{},"⬆︎"), " then ", el("b",{},"Add to Home Screen"),
+    ". Open it from that icon so your voices stay saved.", el("br"),
+    el("button",{onclick:()=>{ try{localStorage.setItem("lgn.hideInstall","1");}catch(e){} renderInstall(); }},"Hide")));
+}
+
+/* ---------------- Boot ---------------- */
+function renderAll(){
+  document.querySelectorAll("#modeSeg button").forEach(b=>b.classList.toggle("on", b.dataset.mode===S.mode));
+  renderInstall(); renderCards(); renderVoices(); renderPlay();
+}
+Voices.load().then(renderAll);
+renderAll();
+if ("serviceWorker" in navigator && location.protocol==="https:"){ navigator.serviceWorker.register("sw.js").catch(()=>{}); }
+</script>
+</body>
+</html>
