@@ -393,6 +393,7 @@ function showSheet(title, ...body){
   $("#modal").classList.add("on");
 }
 function micError(e){
+  setSession("auto");
   const name = (e && e.name) || "Error";
   if (EMBED) return showSheet("Microphone blocked here", el("p",{},"This test version runs inside Claude, which blocks the microphone. Open the app from sergeinacio.github.io/loup-garou in Safari."));
   if (name==="NotReadableError" || name==="AbortError")
@@ -456,6 +457,7 @@ async function startRec(key){
   stopPreview();
   if (!navigator.mediaDevices || !window.MediaRecorder || (EMBED && !navigator.mediaDevices.getUserMedia)){ toast("Recording isn't available here. Open the app from your home screen."); return; }
   let stream;
+  setSession("play-and-record");
   try{ stream = await navigator.mediaDevices.getUserMedia({ audio:{ echoCancellation:true, noiseSuppression:true } }); }
   catch(e){ micError(e); return; }
   const mime = pickMime(); let mr;
@@ -472,7 +474,7 @@ function stopRec(){
     if (!Rec) return res();
     const r = Rec; clearInterval(r.timer);
     r.mr.onstop = async ()=>{
-      r.stream.getTracks().forEach(t=>t.stop());
+      r.stream.getTracks().forEach(t=>t.stop()); setSession("auto");
       const type = r.mr.mimeType || pickMime() || "audio/mp4";
       const blob = new Blob(r.chunks, { type });
       Rec = null;
@@ -612,7 +614,7 @@ async function runSteps(steps){
   }
   markOrder(steps.length); return !Run.cancel;
 }
-function unlockAudio(){ Music.ensure(); try{ audio.src=SILENT; audio.play().catch(()=>{}); }catch(e){}
+function unlockAudio(){ setSession("playback"); Music.ensure(); try{ audio.src=SILENT; audio.play().catch(()=>{}); }catch(e){}
   try{ if (S.tts && window.speechSynthesis){ const u=new SpeechSynthesisUtterance(" "); u.volume=0; speechSynthesis.speak(u); } }catch(e){} }
 
 async function startNight(){
@@ -651,12 +653,13 @@ function togglePause(){
 }
 function skip(){ Run.skip=true; Run.paused=false; if (Run.stopCur) Run.stopCur(); renderCtrls(); }
 function stop(){ Run.cancel=true; Run.paused=false; Music.pause(false); Music.stop(0.5); if (Run.stopCur) Run.stopCur(); }
-function resetGame(){ Object.assign(Run,{active:false,paused:false,skip:false,cancel:false,night:1,phase:"idle"}); Run.out.clear(); wakeLock(false);
+function resetGame(){ setSession("auto"); Object.assign(Run,{active:false,paused:false,skip:false,cancel:false,night:1,phase:"idle"}); Run.out.clear(); wakeLock(false);
   setStage("Ready","Place the phone in the middle","",0); renderPlay(); }
 
 
 /* ---------------- Background music (3 layered loops) ---------------- */
-try{ if (navigator.audioSession) navigator.audioSession.type = "playback"; }catch(e){}
+// iPhone audio session: "playback" blocks the microphone, so it is only used while a game runs.
+function setSession(t){ try{ if (navigator.audioSession) navigator.audioSession.type = t; }catch(e){} }
 const DUCK = 0.35;
 const Music = {
   ctx:null, master:null, srcs:[], bufs:[null,null,null], playing:false, ducked:false, tok:0, target:0.6,
@@ -745,6 +748,7 @@ async function recMusic(i){
   const ctx = Music.ensure(); if (!ctx){ toast("Audio isn't available on this device"); return; }
   Music.stopNow(); musicPreview=false;
   let stream;
+  setSession("play-and-record");
   try{ stream = await navigator.mediaDevices.getUserMedia({ audio:{ echoCancellation:false, noiseSuppression:false, autoGainControl:false } }); }
   catch(e){ micError(e); return; }
   const base = i>0 ? await Music.buf(0) : null;
@@ -775,7 +779,7 @@ function stopMusicRec(cancel){
   if (!MRec) return; const r = MRec; clearInterval(r.timer); MRec = null;
   Music.stopNow();
   r.mr.onstop = async ()=>{
-    r.stream.getTracks().forEach(t=>t.stop());
+    r.stream.getTracks().forEach(t=>t.stop()); setSession("auto");
     if (cancel || r.phase!=="rec"){ renderMusic(); return; }
     const type = r.mr.mimeType || pickMime() || "audio/mp4";
     const blob = new Blob(r.chunks, { type });
