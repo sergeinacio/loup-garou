@@ -56,7 +56,7 @@ main{padding:0 16px}
 .row{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:8px}
 .row label{flex:1}
 .row small{display:block;color:var(--muted);font-size:12.5px}
-.switch{position:relative;width:48px;height:28px;flex:none}
+.switch{position:relative;width:48px;height:28px;flex:none!important}
 .switch input{opacity:0;width:0;height:0}
 .switch i{position:absolute;inset:0;background:#2a365e;border-radius:20px;transition:.2s}
 .switch i:before{content:"";position:absolute;width:22px;height:22px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s}
@@ -110,6 +110,12 @@ nav{position:fixed;left:0;right:0;bottom:0;z-index:6;display:flex;background:rgb
 nav button{flex:1;padding:6px 0;color:var(--muted);font-size:11.5px;display:flex;flex-direction:column;align-items:center;gap:3px}
 nav button svg{width:24px;height:24px}
 nav button.on{color:var(--moon)}
+input[type=range]{width:100%;accent-color:var(--moon2)}
+.ctl{display:flex;gap:12px;align-items:center;margin-top:10px;color:var(--muted);font-size:13px}
+.ctl span{min-width:64px}
+details.tm{margin-top:8px;color:var(--muted);font-size:13px}
+details.tm summary{cursor:pointer}
+.countin{font-family:var(--serif);font-size:40px;color:var(--moon);text-align:center;margin:6px 0}
 .toast{position:fixed;left:50%;bottom:calc(90px + var(--safe-b));transform:translateX(-50%);background:#263258;color:#fff;
   padding:10px 16px;border-radius:12px;font-size:14px;opacity:0;transition:.25s;pointer-events:none;z-index:9;max-width:90vw;text-align:center}
 .toast.on{opacity:1}
@@ -161,6 +167,13 @@ nav button.on{color:var(--moon)}
     <input type="file" id="clipFile" accept="audio/*" hidden>
   </section>
 
+  <!-- MUSIC -->
+  <section class="view" id="v-music">
+    <p class="hint">Record up to 3 short loops (about 15 seconds) by humming or singing. They play <b>together</b> and repeat during the night, a bit quieter when the narrator speaks.</p>
+    <p class="hint">Record <b>Track 1</b> first: its length sets the loop. While you record tracks 2 and 3 you hear the others, so you can sing in time. Use <b>headphones</b> for those, otherwise the mic records the speaker too.</p>
+    <div id="musicBox"></div>
+  </section>
+
   <!-- PLAY -->
   <section class="view" id="v-play">
     <div class="stage">
@@ -180,6 +193,7 @@ nav button.on{color:var(--moon)}
 <nav>
   <button data-view="cards" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="11" height="15" rx="2"/><path d="M8 3h9a2 2 0 0 1 2 2v13"/></svg>Cards</button>
   <button data-view="voices"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>Voices</button>
+  <button data-view="music"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>Music</button>
   <button data-view="play"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>Play</button>
 </nav>
 
@@ -254,14 +268,15 @@ const DATA = {
 /* ---------------- Settings (localStorage) ---------------- */
 const LS_KEY = "lgn.settings.v1";
 function defaults(){
-  const s = { mode:"onenight", counts:{}, durs:{}, texts:{}, tts:true, gap:2, discuss:5, onlySel:true };
+  const s = { mode:"onenight", counts:{}, durs:{}, texts:{}, tts:true, gap:2, discuss:5, onlySel:true,
+    music:{ on:true, master:0.6, vol:[0.9,0.7,0.7], mute:[false,false,false], off:[0,0,0] } };
   for (const m in DATA){ s.counts[m]={}; s.durs[m]={};
     DATA[m].roles.forEach(r=>{ if(!r.auto) s.counts[m][r.id]=r.def||0; if(r.wakes!==false) s.durs[m][r.id]=r.dur; }); }
   return s;
 }
 let S = defaults();
 try { const raw = localStorage.getItem(LS_KEY); if (raw){ const o = JSON.parse(raw);
-  S = Object.assign(S, o); for (const m in DATA){ S.counts[m]=Object.assign(defaults().counts[m], (o.counts||{})[m]); S.durs[m]=Object.assign(defaults().durs[m], (o.durs||{})[m]); } } } catch(e){}
+  S = Object.assign(S, o); for (const m in DATA){ S.counts[m]=Object.assign(defaults().counts[m], (o.counts||{})[m]); S.durs[m]=Object.assign(defaults().durs[m], (o.durs||{})[m]); } S.music=Object.assign(defaults().music, o.music||{}); } } catch(e){}
 function save(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(S)); }catch(e){} }
 
 /* ---------------- Voice storage (IndexedDB) ---------------- */
@@ -323,7 +338,7 @@ document.querySelectorAll("#modeSeg button").forEach(b=> b.onclick=()=>setMode(b
 document.querySelectorAll("nav button").forEach(b=> b.onclick=()=>{
   document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("on",x===b));
   document.querySelectorAll(".view").forEach(v=>v.classList.toggle("on", v.id==="v-"+b.dataset.view));
-  if (b.dataset.view==="voices") renderVoices(); if (b.dataset.view==="play") renderPlay();
+  if (b.dataset.view==="voices") renderVoices(); if (b.dataset.view==="music") renderMusic(); if (b.dataset.view==="play") renderPlay();
   window.scrollTo(0,0);
 });
 
@@ -458,7 +473,8 @@ $("#clipFile").onchange = async e=>{
   const f = e.target.files[0]; e.target.value=""; if (!f || !pickKey) return;
   const data = await f.arrayBuffer(); const dur = await measure(f, 0);
   await Voices.put({ key:pickKey, mime:f.type||"audio/mp4", data, dur, ts:Date.now() });
-  renderVoices(); toast("Imported ✓");
+  if (pickKey.startsWith("music.")) { Music.forget(+pickKey.slice(6)-1); renderMusic(); } else renderVoices();
+  toast("Imported ✓");
 };
 let prevAudio = null;
 function preview(c){
@@ -512,7 +528,8 @@ try{ loadVoices(); speechSynthesis.onvoiceschanged = loadVoices; }catch(e){}
 function playKey(key, text){
   return new Promise(res=>{
     const r = Voices.get(key);
-    let done=false; const fin=()=>{ if(done) return; done=true; Run.stopCur=null; res(); };
+    let done=false; const fin=()=>{ if(done) return; done=true; Run.stopCur=null; Music.duck(false); res(); };
+    Music.duck(true);
     if (r){
       const u = URL.createObjectURL(new Blob([r.data],{type:r.mime}));
       audio.onended = ()=>{ URL.revokeObjectURL(u); fin(); }; audio.onerror = fin;
@@ -574,7 +591,7 @@ async function runSteps(steps){
   }
   markOrder(steps.length); return !Run.cancel;
 }
-function unlockAudio(){ try{ audio.src=SILENT; audio.play().catch(()=>{}); }catch(e){}
+function unlockAudio(){ Music.ensure(); try{ audio.src=SILENT; audio.play().catch(()=>{}); }catch(e){}
   try{ if (S.tts && window.speechSynthesis){ const u=new SpeechSynthesisUtterance(" "); u.volume=0; speechSynthesis.speak(u); } }catch(e){} }
 
 async function startNight(){
@@ -583,7 +600,9 @@ async function startNight(){
   unlockAudio(); stopPreview();
   Object.assign(Run, { active:true, paused:false, skip:false, cancel:false, phase:"night" });
   wakeLock(true); renderPlay();
+  if (S.music.on && Music.has()) Music.start({ fade:2 });
   const ok = await runSteps(buildNight(Run.night));
+  Music.stop(ok ? 3 : 0.5);
   Run.active=false; wakeLock(false);
   if (!ok){ resetGame(); return; }
   Run.phase="day";
@@ -605,14 +624,193 @@ async function playVote(){
 }
 function nextNight(){ Run.night++; Run.phase="idle"; startNight(); }
 function togglePause(){
-  Run.paused=!Run.paused;
+  Run.paused=!Run.paused; Music.pause(Run.paused);
   try{ if (Run.paused){ audio.pause(); speechSynthesis.pause(); } else { if (audio.src && !audio.ended && audio.currentTime>0) audio.play().catch(()=>{}); speechSynthesis.resume(); } }catch(e){}
   renderCtrls();
 }
 function skip(){ Run.skip=true; Run.paused=false; if (Run.stopCur) Run.stopCur(); renderCtrls(); }
-function stop(){ Run.cancel=true; Run.paused=false; if (Run.stopCur) Run.stopCur(); }
+function stop(){ Run.cancel=true; Run.paused=false; Music.pause(false); Music.stop(0.5); if (Run.stopCur) Run.stopCur(); }
 function resetGame(){ Object.assign(Run,{active:false,paused:false,skip:false,cancel:false,night:1,phase:"idle"}); Run.out.clear(); wakeLock(false);
   setStage("Ready","Place the phone in the middle","",0); renderPlay(); }
+
+
+/* ---------------- Background music (3 layered loops) ---------------- */
+try{ if (navigator.audioSession) navigator.audioSession.type = "playback"; }catch(e){}
+const DUCK = 0.35;
+const Music = {
+  ctx:null, master:null, srcs:[], bufs:[null,null,null], playing:false, ducked:false, tok:0, target:0.6,
+  key(i){ return "music."+(i+1); },
+  ensure(){
+    try{
+      if (!this.ctx){ const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null;
+        this.ctx = new AC(); this.master = this.ctx.createGain(); this.master.gain.value = 0; this.master.connect(this.ctx.destination); }
+      if (this.ctx.state !== "running") this.ctx.resume();
+    }catch(e){}
+    return this.ctx;
+  },
+  has(){ return [0,1,2].some(i=>Voices.has(this.key(i))); },
+  forget(i){ if (i===0) this.bufs=[null,null,null]; else this.bufs[i]=null; },
+  async buf(i){
+    if (this.bufs[i]) return this.bufs[i];
+    const r = Voices.get(this.key(i)); if (!r) return null;
+    const ctx = this.ensure(); if (!ctx) return null;
+    let b;
+    try{ b = await new Promise((res,rej)=>{ const pr = ctx.decodeAudioData(r.data.slice(0), res, rej); if (pr && pr.then) pr.then(res, rej); }); }
+    catch(e){ return null; }
+    if (i>0){ const base = await this.buf(0); if (base && Math.abs(b.duration-base.duration) < 2.5) b = fitLength(ctx, b, base.length); }
+    smoothEdges(b); this.bufs[i] = b; return b;
+  },
+  async start({ fade=1.5, exclude=-1, at=null } = {}){
+    this.stopNow(); const ctx = this.ensure(); if (!ctx) return null;
+    const tok = ++this.tok;
+    const bufs = await Promise.all([0,1,2].map(i=>this.buf(i)));
+    if (tok !== this.tok) return null;
+    const t = at ?? (ctx.currentTime + 0.08);
+    bufs.forEach((b,i)=>{
+      if (!b || i===exclude || S.music.mute[i]) return;
+      const s = ctx.createBufferSource(); s.buffer=b; s.loop=true;
+      const g = ctx.createGain(); g.gain.value = S.music.vol[i];
+      s.connect(g); g.connect(this.master);
+      const d = b.duration, off = ((-(S.music.off[i]||0)/1000) % d + d) % d;
+      s.start(t, off); this.srcs.push({ s, g, i });
+    });
+    this.playing = this.srcs.length > 0; this.target = S.music.master;
+    const gn = this.master.gain, now = ctx.currentTime;
+    gn.cancelScheduledValues(now); gn.setValueAtTime(gn.value, now);
+    gn.linearRampToValueAtTime(this.ducked ? this.target*DUCK : this.target, Math.max(t, now) + fade);
+    return t;
+  },
+  stopNow(){
+    this.tok++; this.srcs.forEach(x=>{ try{ x.s.stop(); }catch(e){} }); this.srcs=[]; this.playing=false;
+    if (this.master){ const n=this.ctx.currentTime; this.master.gain.cancelScheduledValues(n); this.master.gain.setValueAtTime(0, n); }
+  },
+  stop(fade=1.5){
+    if (!this.playing || !this.ctx) return;
+    const ctx=this.ctx, g=this.master.gain, now=ctx.currentTime, list=this.srcs;
+    g.cancelScheduledValues(now); g.setValueAtTime(g.value, now); g.linearRampToValueAtTime(0, now+fade);
+    this.srcs=[]; this.playing=false; this.tok++;
+    setTimeout(()=> list.forEach(x=>{ try{ x.s.stop(); }catch(e){} }), fade*1000+150);
+  },
+  duck(on){
+    this.ducked = on; if (!this.playing || !this.ctx) return;
+    this.master.gain.setTargetAtTime(on ? this.target*DUCK : this.target, this.ctx.currentTime, 0.15);
+  },
+  pause(p){ if (!this.ctx) return; try{ p ? this.ctx.suspend() : this.ctx.resume(); }catch(e){} },
+  setVol(i,v){ S.music.vol[i]=v; save(); this.srcs.filter(x=>x.i===i).forEach(x=>x.g.gain.value=v); },
+  setMaster(v){ S.music.master=v; save(); this.target=v; if (this.playing) this.master.gain.setTargetAtTime(this.ducked? v*DUCK : v, this.ctx.currentTime, 0.05); }
+};
+function fitLength(ctx, b, len){
+  const out = ctx.createBuffer(b.numberOfChannels, len, b.sampleRate);
+  for (let c=0;c<b.numberOfChannels;c++){ out.getChannelData(c).set(b.getChannelData(c).subarray(0, Math.min(len, b.length))); }
+  return out;
+}
+function smoothEdges(b){
+  const n = Math.min(Math.floor(b.sampleRate*0.012), Math.floor(b.length/4));
+  for (let c=0;c<b.numberOfChannels;c++){ const d=b.getChannelData(c);
+    for (let k=0;k<n;k++){ const f=k/n; d[k]*=f; d[d.length-1-k]*=f; } }
+}
+function beep(ctx, t, freq){
+  const o=ctx.createOscillator(), g=ctx.createGain(); o.frequency.value=freq; o.type="sine";
+  g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.4,t+0.01); g.gain.exponentialRampToValueAtTime(0.0001,t+0.12);
+  o.connect(g); g.connect(ctx.destination); o.start(t); o.stop(t+0.15);
+}
+
+let MRec = null; // music recording in progress
+let musicPreview = false;
+async function recMusic(i){
+  if (MRec || Rec){ toast("Already recording"); return; }
+  if (Run.active){ toast("Stop the game first"); return; }
+  if (!navigator.mediaDevices || !window.MediaRecorder){ toast("Recording isn't available here. Open the app from your home screen."); return; }
+  const ctx = Music.ensure(); if (!ctx){ toast("Audio isn't available on this device"); return; }
+  Music.stopNow(); musicPreview=false;
+  let stream;
+  try{ stream = await navigator.mediaDevices.getUserMedia({ audio:{ echoCancellation:false, noiseSuppression:false, autoGainControl:false } }); }
+  catch(e){ toast(EMBED ? "The microphone is blocked in this test version." : "Microphone access was refused. Allow it in Settings › Safari › Microphone."); return; }
+  const base = i>0 ? await Music.buf(0) : null;
+  const mime = pickMime(); let mr;
+  try{ mr = mime ? new MediaRecorder(stream,{mimeType:mime}) : new MediaRecorder(stream); }catch(e){ mr = new MediaRecorder(stream); }
+  const chunks = [];
+  MRec = { i, mr, stream, chunks, t0:0, phase:"count", len: base ? base.duration : 20 };
+  mr.ondataavailable = e=>{ if (e.data && e.data.size) chunks.push(e.data); };
+  renderMusic();
+  // count-in: 3 beeps, then start
+  const t0 = ctx.currentTime + 0.15, tStart = t0 + 1.5;
+  beep(ctx,t0,880); beep(ctx,t0+0.5,880); beep(ctx,t0+1.0,1320);
+  if (base) Music.start({ fade:0.02, exclude:i, at:tStart });
+  const showCount = n=>{ const c=document.getElementById("mc-"+i); if (c) c.textContent = n; };
+  showCount("3"); setTimeout(()=>showCount("2"),500); setTimeout(()=>showCount("1"),1000);
+  setTimeout(()=>{
+    if (!MRec) return;
+    try{ mr.start(); }catch(e){}
+    MRec.t0 = Date.now(); MRec.phase = "rec"; renderMusic();
+    MRec.timer = setInterval(()=>{
+      if (!MRec) return; const el2=document.getElementById("mt-"+i);
+      const sec=(Date.now()-MRec.t0)/1000; if (el2) el2.textContent = "● "+fmtSec(sec)+(base? " / "+fmtSec(MRec.len):"");
+      if (sec >= MRec.len) stopMusicRec();
+    }, 100);
+  }, Math.max(0,(tStart-ctx.currentTime)*1000));
+}
+function stopMusicRec(cancel){
+  if (!MRec) return; const r = MRec; clearInterval(r.timer); MRec = null;
+  Music.stopNow();
+  r.mr.onstop = async ()=>{
+    r.stream.getTracks().forEach(t=>t.stop());
+    if (cancel || r.phase!=="rec"){ renderMusic(); return; }
+    const type = r.mr.mimeType || pickMime() || "audio/mp4";
+    const blob = new Blob(r.chunks, { type });
+    if (blob.size < 500){ toast("Recording too short"); renderMusic(); return; }
+    const data = await blob.arrayBuffer(); const dur = await measure(blob, (Date.now()-r.t0)/1000);
+    await Voices.put({ key:Music.key(r.i), mime:type, data, dur, ts:Date.now() });
+    S.music.off[r.i]=0; save(); Music.forget(r.i); renderMusic(); toast("Saved ✓");
+  };
+  try{ if (r.mr.state!=="inactive") r.mr.stop(); else r.mr.onstop(); }catch(e){ r.stream.getTracks().forEach(t=>t.stop()); renderMusic(); }
+}
+async function toggleMusicPreview(){
+  if (musicPreview){ Music.stop(0.4); musicPreview=false; renderMusic(); return; }
+  if (!Music.has()){ toast("Record a track first"); return; }
+  const t = await Music.start({ fade:0.4 }); musicPreview = !!t && Music.playing; renderMusic();
+}
+function slider(min,max,step,val,on){ const r=el("input",{type:"range",min,max,step}); r.value=val; r.oninput=()=>on(+r.value); return r; }
+function renderMusic(){
+  const box=$("#musicBox"); if (!box) return; box.innerHTML="";
+  const sw = el("label",{class:"switch"}); const inp = el("input",{type:"checkbox"}); inp.checked=S.music.on;
+  inp.onchange=()=>{ S.music.on=inp.checked; save(); }; sw.append(inp, el("i"));
+  box.append(el("div",{class:"row"}, el("label",{},"Music during the night", el("small",{},"Starts when the night falls, fades out at sunrise")), sw));
+  const mv = el("div",{class:"row"}, el("label",{},"Music volume"));
+  mv.append(el("div",{style:"flex:1.3"}, slider(0,1,0.05,S.music.master,v=>Music.setMaster(v)))); box.append(mv);
+  const names=["Track 1 · base loop","Track 2","Track 3"];
+  const list = el("div",{class:"list"});
+  [0,1,2].forEach(i=>{
+    const r = Voices.get(Music.key(i)), recHere = MRec && MRec.i===i;
+    const status = recHere ? (MRec.phase==="count" ? "get ready…" : "● recording") : (r ? fmtSec(r.dur||0) : "empty");
+    const card = el("div",{class:"clip"},
+      el("div",{class:"hd"}, el("span",{class:"dot"+(r?" ok":"")}), el("b",{},names[i]), el("small",{id:"mt-"+i}, status)));
+    if (recHere && MRec.phase==="count") card.append(el("div",{class:"countin",id:"mc-"+i},"3"));
+    if (i>0 && !Voices.has(Music.key(0)) && !r) card.append(el("p",{class:"hint",style:"margin:6px 0 4px"},"Tip: record Track 1 first so this one matches its length."));
+    const btns = el("div",{class:"btns",style:"margin-top:10px"},
+      el("button",{class:"b rec"+(recHere?" on":""), onclick:()=> recHere ? stopMusicRec(MRec.phase!=="rec") : recMusic(i)}, recHere ? "■ Stop" : (r ? "● Re-record" : "● Record")));
+    if (r){
+      btns.append(el("button",{class:"b", onclick:()=>{ S.music.mute[i]=!S.music.mute[i]; save(); if (musicPreview) Music.start({fade:0.1}); renderMusic(); }}, S.music.mute[i] ? "🔇 Muted" : "🔊 On"));
+    }
+    btns.append(el("button",{class:"b dim", onclick:()=>{ pickKey=Music.key(i); $("#clipFile").click(); }}, "Import"));
+    if (r) btns.append(el("button",{class:"b dim", onclick:async()=>{ if (musicPreview){ Music.stopNow(); musicPreview=false; } await Voices.del(Music.key(i)); Music.forget(i); renderMusic(); toast("Track deleted"); }}, "Delete"));
+    card.append(btns);
+    if (r){
+      card.append(el("div",{class:"ctl"}, el("span",{},"Volume"), slider(0,1,0.05,S.music.vol[i],v=>Music.setVol(i,v))));
+      if (i>0){
+        const lab = el("span",{}, (S.music.off[i]>0?"+":"")+S.music.off[i]+" ms");
+        const d = el("details",{class:"tm"}, el("summary",{},"Fix timing"),
+          el("p",{class:"hint",style:"margin:6px 0"},"If this track sounds a bit late or early against Track 1, nudge it here while the music plays."),
+          el("div",{class:"ctl"}, lab, slider(-400,400,10,S.music.off[i],v=>{ S.music.off[i]=v; save(); lab.textContent=(v>0?"+":"")+v+" ms"; })));
+        d.querySelector("input").onchange = ()=>{ if (musicPreview) Music.start({fade:0.05}); };
+        card.append(d);
+      }
+    }
+    list.append(card);
+  });
+  box.append(list);
+  box.append(el("button",{class:"big"+(musicPreview?" sec":""), onclick:toggleMusicPreview}, musicPreview ? "■ Stop music" : "▶ Play all tracks together"));
+}
 
 /* ---------------- Play view ---------------- */
 function markOrder(i){ document.querySelectorAll("#orderList li").forEach((li,j)=>{ li.classList.toggle("done", j<i); li.classList.toggle("now", j===i); }); }
@@ -679,7 +877,7 @@ function renderInstall(){
 /* ---------------- Boot ---------------- */
 function renderAll(){
   document.querySelectorAll("#modeSeg button").forEach(b=>b.classList.toggle("on", b.dataset.mode===S.mode));
-  renderInstall(); renderCards(); renderVoices(); renderPlay();
+  renderInstall(); renderCards(); renderVoices(); renderMusic(); renderPlay();
 }
 Voices.load().then(renderAll);
 renderAll();
