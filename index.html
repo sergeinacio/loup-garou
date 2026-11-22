@@ -116,6 +116,14 @@ input[type=range]{width:100%;accent-color:var(--moon2)}
 details.tm{margin-top:8px;color:var(--muted);font-size:13px}
 details.tm summary{cursor:pointer}
 .countin{font-family:var(--serif);font-size:40px;color:var(--moon);text-align:center;margin:6px 0}
+.deck{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:4px}
+.tile{position:relative;padding:0;border-radius:10px;overflow:hidden;border:2px solid #2a365e;background:#fff;aspect-ratio:300/212}
+.tile img{width:100%;height:100%;object-fit:cover;display:block;opacity:.3;filter:grayscale(1);transition:opacity .15s,filter .15s}
+.tile.on{border-color:var(--moon);box-shadow:0 0 0 1px var(--moon)}
+.tile.on img{opacity:1;filter:none}
+.tile.on:after{content:"✓";position:absolute;top:3px;right:3px;width:18px;height:18px;border-radius:50%;background:var(--moon);color:#1b1608;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.deckbar{display:flex;gap:8px;margin:10px 0 4px}
+.deckbar .b{flex:1}
 .toast{position:fixed;left:50%;bottom:calc(90px + var(--safe-b));transform:translateX(-50%);background:#263258;color:#fff;
   padding:10px 16px;border-radius:12px;font-size:14px;opacity:0;transition:.25s;pointer-events:none;z-index:9;max-width:90vw;text-align:center}
 .toast.on{opacity:1}
@@ -346,8 +354,42 @@ document.querySelectorAll("nav button").forEach(b=> b.onclick=()=>{
 function stepper(val, onMinus, onPlus, fmt=v=>v){
   return el("div",{class:"step"}, el("button",{onclick:onMinus,"aria-label":"less"},"−"), el("span",{},fmt(val)), el("button",{onclick:onPlus,"aria-label":"more"},"+"));
 }
+/* Une Nuit: the 16 physical cards, in wake-up order (pictures in cards/) */
+const DECK = ["doppel","loups","loups","sbire","macons","macons","voyante","voleur","noiseuse","soulard","insomniaque","villageois","villageois","villageois","chasseur","tanneur"];
+const DECK_IMG = ["doppel","loups-1","loups-2","sbire","macons-1","macons-2","voyante","voleur","noiseuse","soulard","insomniaque","villageois-1","villageois-2","villageois-3","chasseur","tanneur"];
+function initTiles(){
+  if (Array.isArray(S.tiles) && S.tiles.length===DECK.length) return;
+  const left = Object.assign({}, S.counts.onenight);
+  S.tiles = DECK.map(id=>{ if ((left[id]||0)>0){ left[id]--; return true; } return false; });
+}
+function syncCounts(){
+  const c = {}; DECK.forEach(id=>c[id]=0); S.tiles.forEach((on,k)=>{ if (on) c[DECK[k]]++; });
+  S.counts.onenight = c; save();
+}
+function renderDeck(list){
+  initTiles(); syncCounts();
+  const grid = el("div",{class:"deck"});
+  DECK.forEach((id,k)=>{
+    const r = DATA.onenight.roles.find(x=>x.id===id);
+    const img = el("img",{src:"cards/"+DECK_IMG[k]+".jpg", alt:r.name});
+    grid.append(el("button",{class:"tile"+(S.tiles[k]?" on":""), "aria-label":r.name, "aria-pressed":String(!!S.tiles[k]),
+      onclick:()=>{ S.tiles[k]=!S.tiles[k]; syncCounts(); renderCards(); }}, img));
+  });
+  list.append(grid, el("div",{class:"deckbar"},
+    el("button",{class:"b",onclick:()=>{ S.tiles=DECK.map(()=>true); syncCounts(); renderCards(); }},"Select all"),
+    el("button",{class:"b dim",onclick:()=>{ S.tiles=DECK.map(()=>false); syncCounts(); renderCards(); }},"Clear")));
+  const woke = DATA.onenight.roles.filter(r=>r.wakes!==false && count(r.id)>0);
+  if (woke.length){
+    list.append(el("h2",{},"Time to act"));
+    woke.forEach(r=>{ const d=S.durs.onenight[r.id];
+      list.append(el("div",{class:"row"}, el("label",{},r.name), stepper(d,
+        ()=>{ S.durs.onenight[r.id]=Math.max(3,d-(d>15?5:1)); save(); renderCards(); },
+        ()=>{ S.durs.onenight[r.id]=Math.min(120,d+(d>=15?5:1)); save(); renderCards(); }, v=>v+"s"))); });
+  }
+}
 function renderCards(){
   const m = M(), list = $("#roleList"); list.innerHTML="";
+  if (S.mode==="onenight") renderDeck(list); else
   m.roles.forEach(r=>{
     if (r.auto) return;
     const c = count(r.id);
@@ -371,7 +413,7 @@ function renderCards(){
   $("#sumPlayers").textContent = Math.max(0,total-extra);
   $("#sumWake").textContent = m.roles.filter(r=>r.wakes!==false && isSelected(r)).length;
   $("#cardsHint").textContent = S.mode==="onenight"
-    ? "Pick the cards in play. 3 cards always go face down in the middle, so players = cards − 3."
+    ? "Tap the cards that are in tonight's deck. 3 cards always go face down in the middle, so players = cards − 3."
     : "Pick the cards in play. Keep the cards face down in front of each player during the game. With the Voleur, add 2 extra cards in the middle.";
   renderSettings();
 }
