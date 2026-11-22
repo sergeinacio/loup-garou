@@ -680,7 +680,7 @@ const Music = {
     const ctx = this.ensure(); if (!ctx) return null;
     let b;
     try{ b = await new Promise((res,rej)=>{ const pr = ctx.decodeAudioData(r.data.slice(0), res, rej); if (pr && pr.then) pr.then(res, rej); }); }
-    catch(e){ return null; }
+    catch(e){ toast("Track "+(i+1)+" couldn't be read. Please record it again."); return null; }
     if (i>0){ const base = await this.buf(0); if (base && Math.abs(b.duration-base.duration) < 2.5) b = fitLength(ctx, b, base.length); }
     smoothEdges(b); this.bufs[i] = b; return b;
   },
@@ -741,59 +741,81 @@ function beep(ctx, t, freq){
 
 let MRec = null; // music recording in progress
 let musicPreview = false;
+/* Music is recorded as raw audio straight from the microphone (no compression),
+   so the iPhone never has to decode it again and the loops stay in sync. */
+function encodeWav(pcm, sr){
+  const buf = new ArrayBuffer(44 + pcm.length*2), v = new DataView(buf);
+  const w = (o,str)=>{ for (let k=0;k<str.length;k++) v.setUint8(o+k, str.charCodeAt(k)); };
+  w(0,"RIFF"); v.setUint32(4, 36+pcm.length*2, true); w(8,"WAVE"); w(12,"fmt ");
+  v.setUint32(16,16,true); v.setUint16(20,1,true); v.setUint16(22,1,true); v.setUint32(24,sr,true);
+  v.setUint32(28,sr*2,true); v.setUint16(32,2,true); v.setUint16(34,16,true); w(36,"data"); v.setUint32(40,pcm.length*2,true);
+  for (let k=0;k<pcm.length;k++){ const x=Math.max(-1,Math.min(1,pcm[k])); v.setInt16(44+k*2, x<0? x*0x8000 : x*0x7FFF, true); }
+  return buf;
+}
 async function recMusic(i){
   if (MRec || Rec){ toast("Already recording"); return; }
   if (Run.active){ toast("Stop the game first"); return; }
-  if (!navigator.mediaDevices || !window.MediaRecorder){ toast("Recording isn't available here. Open the app from your home screen."); return; }
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){ toast("Recording isn't available here. Open the app from your home screen."); return; }
   const ctx = Music.ensure(); if (!ctx){ toast("Audio isn't available on this device"); return; }
   Music.stopNow(); musicPreview=false;
-  let stream;
   setSession("play-and-record");
+  let stream;
   try{ stream = await navigator.mediaDevices.getUserMedia({ audio:{ echoCancellation:false, noiseSuppression:false, autoGainControl:false } }); }
   catch(e){ micError(e); return; }
+  try{ await ctx.resume(); }catch(e){}
   const base = i>0 ? await Music.buf(0) : null;
-  const mime = pickMime(); let mr;
-  try{ mr = mime ? new MediaRecorder(stream,{mimeType:mime}) : new MediaRecorder(stream); }catch(e){ mr = new MediaRecorder(stream); }
-  const chunks = [];
-  MRec = { i, mr, stream, chunks, t0:0, phase:"count", len: base ? base.duration : 20 };
-  mr.ondataavailable = e=>{ if (e.data && e.data.size) chunks.push(e.data); };
-  renderMusic();
-  // count-in: 3 beeps, then start
+  const sr = ctx.sampleRate, maxLen = base ? base.length : Math.round(20*sr);
+  const data = new Float32Array(maxLen);
+  const src = ctx.createMediaStreamSource(stream);
+  const proc = ctx.createScriptProcessor(4096, 1, 1);
+  const sink = ctx.createGain(); sink.gain.value = 0;
+  src.connect(proc); proc.connect(sink); sink.connect(ctx.destination);
   const t0 = ctx.currentTime + 0.15, tStart = t0 + 1.5;
+  const R = MRec = { i, stream, src, proc, sink, data, n:0, sr, tStart, phase:"count", len: maxLen/sr, peak:0 };
+  proc.onaudioprocess = e=>{
+    if (MRec !== R) return;
+    const inp = e.inputBuffer.getChannelData(0), len = inp.length;
+    const blockStart = ctx.currentTime - len/sr;
+    let from = Math.round((tStart - blockStart)*sr); if (from >= len) return; if (from < 0) from = 0;
+    for (let k=from; k<len && R.n<maxLen; k++){ const x=inp[k]; data[R.n++]=x; const a=x<0?-x:x; if (a>R.peak) R.peak=a; }
+    if (R.n >= maxLen) setTimeout(()=>stopMusicRec(), 0);
+  };
+  renderMusic();
   beep(ctx,t0,880); beep(ctx,t0+0.5,880); beep(ctx,t0+1.0,1320);
   if (base) Music.start({ fade:0.02, exclude:i, at:tStart });
   const showCount = n=>{ const c=document.getElementById("mc-"+i); if (c) c.textContent = n; };
   showCount("3"); setTimeout(()=>showCount("2"),500); setTimeout(()=>showCount("1"),1000);
   setTimeout(()=>{
-    if (!MRec) return;
-    try{ mr.start(); }catch(e){}
-    MRec.t0 = Date.now(); MRec.phase = "rec"; renderMusic();
-    MRec.timer = setInterval(()=>{
-      if (!MRec) return; const el2=document.getElementById("mt-"+i);
-      const sec=(Date.now()-MRec.t0)/1000; if (el2) el2.textContent = "● "+fmtSec(sec)+(base? " / "+fmtSec(MRec.len):"");
-      if (sec >= MRec.len) stopMusicRec();
-    }, 100);
+    if (MRec !== R) return;
+    R.phase = "rec"; renderMusic();
+    R.timer = setInterval(()=>{
+      if (MRec !== R) return; const e2=document.getElementById("mt-"+i);
+      if (e2) e2.textContent = "● "+fmtSec(R.n/sr)+(base? " / "+fmtSec(R.len) : "");
+    }, 150);
   }, Math.max(0,(tStart-ctx.currentTime)*1000));
 }
-function stopMusicRec(cancel){
-  if (!MRec) return; const r = MRec; clearInterval(r.timer); MRec = null;
+async function stopMusicRec(cancel){
+  const r = MRec; if (!r) return; MRec = null; clearInterval(r.timer);
   Music.stopNow();
-  r.mr.onstop = async ()=>{
-    r.stream.getTracks().forEach(t=>t.stop()); setSession("auto");
-    if (cancel || r.phase!=="rec"){ renderMusic(); return; }
-    const type = r.mr.mimeType || pickMime() || "audio/mp4";
-    const blob = new Blob(r.chunks, { type });
-    if (blob.size < 500){ toast("Recording too short"); renderMusic(); return; }
-    const data = await blob.arrayBuffer(); const dur = await measure(blob, (Date.now()-r.t0)/1000);
-    await Voices.put({ key:Music.key(r.i), mime:type, data, dur, ts:Date.now() });
-    S.music.off[r.i]=0; save(); Music.forget(r.i); renderMusic(); toast("Saved ✓");
-  };
-  try{ if (r.mr.state!=="inactive") r.mr.stop(); else r.mr.onstop(); }catch(e){ r.stream.getTracks().forEach(t=>t.stop()); renderMusic(); }
+  try{ r.proc.onaudioprocess=null; r.src.disconnect(); r.proc.disconnect(); r.sink.disconnect(); }catch(e){}
+  r.stream.getTracks().forEach(t=>t.stop()); setSession("auto");
+  if (cancel){ renderMusic(); return; }
+  if (r.n < r.sr*0.5){ toast("Recording too short"); renderMusic(); return; }
+  if (r.peak < 0.003){
+    renderMusic();
+    return showSheet("Only silence was recorded", el("p",{},"The microphone gave no sound. Close the app completely, open it again and retry. If it keeps happening, tell Claude: \"music records silence\"."));
+  }
+  const pcm = r.data.slice(0, r.n);
+  await Voices.put({ key:Music.key(r.i), mime:"audio/wav", data:encodeWav(pcm, r.sr), dur:r.n/r.sr, ts:Date.now() });
+  S.music.off[r.i]=0; save(); Music.forget(r.i); renderMusic(); toast("Saved ✓");
 }
 async function toggleMusicPreview(){
-  if (musicPreview){ Music.stop(0.4); musicPreview=false; renderMusic(); return; }
+  if (musicPreview){ Music.stop(0.4); musicPreview=false; if (!Run.active) setTimeout(()=>setSession("auto"),500); renderMusic(); return; }
   if (!Music.has()){ toast("Record a track first"); return; }
-  const t = await Music.start({ fade:0.4 }); musicPreview = !!t && Music.playing; renderMusic();
+  setSession("playback");
+  const t = await Music.start({ fade:0.4 }); musicPreview = !!t && Music.playing;
+  if (!musicPreview) showSheet("The music couldn't play", el("p",{},"Your tracks couldn't be read. Delete them and record them again: tracks are now saved in a format every iPhone can read."));
+  renderMusic();
 }
 function slider(min,max,step,val,on){ const r=el("input",{type:"range",min,max,step}); r.value=val; r.oninput=()=>on(+r.value); return r; }
 function renderMusic(){
