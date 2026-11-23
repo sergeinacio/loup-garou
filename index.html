@@ -86,6 +86,10 @@ main{padding:0 16px}
 /* play */
 .stage{text-align:center;padding:10px 0 4px}
 .ring{position:relative;width:230px;height:230px;margin:6px auto 8px}
+.rolecard{display:none;width:210px;margin:4px auto 6px;padding:10px 12px;background:#fff;border-radius:14px;border:2px solid var(--moon);box-shadow:0 6px 24px rgba(0,0,0,.35)}
+.rolecard.on{display:block;animation:cardin .35s ease-out}
+.rolecard img{display:block;width:100%;height:auto;clip-path:inset(2.5% round 8px)}
+@keyframes cardin{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:none}}
 .ring svg{position:absolute;inset:0;transform:rotate(-90deg)}
 .ring .in{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
 .ring .who{font-family:var(--serif);font-size:24px;line-height:1.15}
@@ -117,8 +121,8 @@ details.tm{margin-top:8px;color:var(--muted);font-size:13px}
 details.tm summary{cursor:pointer}
 .countin{font-family:var(--serif);font-size:40px;color:var(--moon);text-align:center;margin:6px 0}
 .deck{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:4px}
-.tile{position:relative;padding:0;border-radius:10px;overflow:hidden;border:2px solid #2a365e;background:#fff;aspect-ratio:300/212}
-.tile img{width:100%;height:100%;object-fit:cover;display:block;opacity:.3;filter:grayscale(1);transition:opacity .15s,filter .15s}
+.tile{position:relative;padding:6px;border-radius:10px;overflow:hidden;border:2px solid #2a365e;background:#fff;aspect-ratio:300/212}
+.tile img{width:100%;height:100%;object-fit:contain;display:block;clip-path:inset(2.5% round 6px);opacity:.3;filter:grayscale(1);transition:opacity .15s,filter .15s}
 .tile.on{border-color:var(--moon);box-shadow:0 0 0 1px var(--moon)}
 .tile.on img{opacity:1;filter:none}
 .tile.on:after{content:"✓";position:absolute;top:3px;right:3px;width:18px;height:18px;border-radius:50%;background:var(--moon);color:#1b1608;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center}
@@ -185,6 +189,7 @@ details.tm summary{cursor:pointer}
   <!-- PLAY -->
   <section class="view" id="v-play">
     <div class="stage">
+      <div class="rolecard" id="stCard"><img id="stImg" alt=""></div>
       <div class="ring">
         <svg viewBox="0 0 230 230"><circle cx="115" cy="115" r="104" fill="none" stroke="#1d2850" stroke-width="10"/>
           <circle id="ringArc" cx="115" cy="115" r="104" fill="none" stroke="#f5d891" stroke-width="10" stroke-linecap="round" stroke-dasharray="653.5" stroke-dashoffset="653.5"/></svg>
@@ -620,7 +625,13 @@ function wait(sec, show){
     if (show) show(left, sec);
   });
 }
-function setStage(who, what, num, frac){
+/* Picture for a role (shared by both modes when the card exists) */
+const ROLE_IMG = { doppel:"doppel", loups:"loups-1", sbire:"sbire", macons:"macons-1", voyante:"voyante", voleur:"voleur",
+  noiseuse:"noiseuse", soulard:"soulard", insomniaque:"insomniaque", chasseur:"chasseur", tanneur:"tanneur", villageois:"villageois-1" };
+function setStage(who, what, num, frac, role){
+  const card=$("#stCard"), img=$("#stImg"), file=role && ROLE_IMG[role];
+  if (file){ const src="cards/"+file+".jpg"; if (img.getAttribute("src")!==src){ img.src=src; img.alt=who; card.classList.remove("on"); void card.offsetWidth; } card.classList.add("on"); }
+  else card.classList.remove("on");
   $("#stWho").textContent=who; $("#stWhat").textContent=what||""; $("#stNum").textContent=num||"";
   $("#ringArc").style.strokeDashoffset = 653.5*(1-(frac==null?0:frac));
 }
@@ -649,9 +660,9 @@ async function runSteps(steps){
     for (const it of s.items){
       if (Run.cancel) return false;
       Run.skip=false;
-      if (it.clip){ setStage(s.who, it.what||"Speaking", "", null); await playKey(it.clip, it.text);
+      if (it.clip){ setStage(s.who, it.what||"Speaking", "", null, s.role); await playKey(it.clip, it.text);
         if (Run.cancel) return false; if (S.gap && !Run.skip) await wait(S.gap); }
-      else if (it.wait){ await wait(it.wait, (l,t)=> setStage(s.who, Run.paused?"Paused":it.what, fmtSec(l), 1-l/t)); }
+      else if (it.wait){ await wait(it.wait, (l,t)=> setStage(s.who, Run.paused?"Paused":it.what, fmtSec(l), 1-l/t, s.role)); }
     }
   }
   markOrder(steps.length); return !Run.cancel;

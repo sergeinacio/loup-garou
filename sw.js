@@ -1,5 +1,5 @@
 // Keeps the app working offline. Bump VERSION after changing files.
-const VERSION = "lgn-v6";
+const VERSION = "lgn-v7";
 const FILES = ["./", "./index.html", "./manifest.webmanifest", "./icon-180.png", "./icon-192.png", "./icon-512.png",
   "./cards/doppel.jpg", "./cards/loups-1.jpg", "./cards/loups-2.jpg", "./cards/sbire.jpg", "./cards/macons-1.jpg", "./cards/macons-2.jpg", "./cards/voyante.jpg", "./cards/voleur.jpg", "./cards/noiseuse.jpg", "./cards/soulard.jpg", "./cards/insomniaque.jpg", "./cards/villageois-1.jpg", "./cards/villageois-2.jpg", "./cards/villageois-3.jpg", "./cards/chasseur.jpg", "./cards/tanneur.jpg"];
 
